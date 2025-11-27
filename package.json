@@ -17,9 +17,34 @@
   "license": "MIT",
   "author": "Liip",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./manager": "./dist/manager.js",
+    "./preview": {
+      "types": "./dist/preview.d.ts",
+      "default": "./dist/preview.js"
+    },
+    "./preset": "./dist/preset.js",
+    "./package.json": "./package.json"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
   "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "start": "pnpm run build && concurrently \"pnpm run build:watch\" \"pnpm run storybook --quiet\"",
+    "prerelease": "pnpm run build",
+    "release": "pnpm publish",
     "test": "echo \"No tests configured\"",
     "lint": "eslint --max-warnings 0",
     "lint:fix": "pnpm lint --fix",
@@ -48,12 +73,38 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "storybook": "^10.1.0",
+    "tsup": "^8.3.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.48.0",
     "vite": "^6.0.0"
   },
   "peerDependencies": {
     "storybook": "^10.1.0"
+  },
+  "bundler": {
+    "managerEntries": [
+      "src/manager.ts"
+    ],
+    "previewEntries": [
+      "src/preview.ts",
+      "src/index.ts"
+    ],
+    "nodeEntries": [
+      "src/preset.ts"
+    ]
+  },
+  "storybook": {
+    "displayName": "Resizr",
+    "unsupportedFrameworks": [],
+    "icon": "https://raw.githubusercontent.com/liip/storybook-addon-resizr/main/icon.svg",
+    "supportedFrameworks": [
+      "react",
+      "vue",
+      "angular",
+      "web-components",
+      "svelte",
+      "preact"
+    ]
   },
   "packageManager": "pnpm@11.0.0-dev.1005+sha512.91f84a392eea348ea4852a182912d2520273a4336f933b78cc44bc931eb999923c097e9433a9b355adc1f725725ea99082fc9f032a559df832632e764c92c798"
 }
