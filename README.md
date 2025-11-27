@@ -1,0 +1,1 @@
+# @liip/storybook-addon-resizr
