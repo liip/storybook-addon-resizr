@@ -1,5 +1,5 @@
 import { GrowIcon } from '@storybook/icons';
-import { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import {
   IconButton,
   WithTooltip,
