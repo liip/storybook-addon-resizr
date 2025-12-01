@@ -92,7 +92,9 @@
       "src/manager.ts"
     ],
     "previewEntries": [
-      "src/preview.ts",
+      "src/preview.ts"
+    ],
+    "exportEntries": [
       "src/index.ts"
     ],
     "nodeEntries": [
