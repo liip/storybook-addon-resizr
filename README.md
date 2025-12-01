@@ -115,7 +115,6 @@ import {
   ADDON_ID,
   PARAM_KEY,
   MINIMAL_VIEWPORTS,
-  ResizeFrame,
 } from '@liip/storybook-addon-resizr';
 
 import type {

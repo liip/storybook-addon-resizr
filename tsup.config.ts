@@ -5,10 +5,22 @@ const NODE_TARGET = 'node20.19';
 export default defineConfig(async () => {
   const packageJson = (
     await import('./package.json', { with: { type: 'json' } })
-  ).default;
+  ).default as {
+    bundler: {
+      managerEntries?: string[];
+      previewEntries?: string[];
+      nodeEntries?: string[];
+      exportEntries?: string[];
+    };
+  };
 
   const {
-    bundler: { managerEntries = [], previewEntries = [], nodeEntries = [] },
+    bundler: {
+      managerEntries = [],
+      previewEntries = [],
+      nodeEntries = [],
+      exportEntries = [],
+    },
   } = packageJson;
 
   const commonConfig: Options = {
@@ -49,6 +61,16 @@ export default defineConfig(async () => {
       entry: nodeEntries,
       platform: 'node',
       target: NODE_TARGET,
+    });
+  }
+
+  // export entries are entries meant to be imported by users (constants, types)
+  if (exportEntries.length) {
+    configs.push({
+      ...commonConfig,
+      entry: exportEntries,
+      platform: 'neutral',
+      dts: true,
     });
   }
 
