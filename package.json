@@ -27,7 +27,6 @@
       "types": "./dist/preview.d.ts",
       "default": "./dist/preview.js"
     },
-    "./preset": "./dist/preset.js",
     "./package.json": "./package.json"
   },
   "main": "dist/index.js",
@@ -36,7 +35,6 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "preset.js",
     "manager.js",
     "preview.js"
   ],
@@ -96,9 +94,6 @@
     ],
     "exportEntries": [
       "src/index.ts"
-    ],
-    "nodeEntries": [
-      "src/preset.ts"
     ]
   },
   "storybook": {

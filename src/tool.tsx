@@ -1,7 +1,8 @@
 import { GrowIcon } from '@storybook/icons';
 import React, { memo, useCallback, useMemo } from 'react';
 import {
-  IconButton,
+  Button,
+  ToggleButton,
   WithTooltip,
   TooltipLinkList,
 } from 'storybook/internal/components';
@@ -20,7 +21,7 @@ const defaultGlobals: ResizrGlobals = {
   height: null,
 };
 
-const IconButtonLabel = styled.div({
+const ButtonLabel = styled.div({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '6px',
@@ -221,26 +222,32 @@ export const Tool = memo(function ResizerTool() {
           />
         )}
       >
-        <IconButton
+        <ToggleButton
           key="viewport-selector"
           title="Change viewport size"
-          active={isActive}
+          ariaLabel="Change viewport size"
+          variant="ghost"
+          size="small"
+          pressed={isActive}
         >
-          <IconButtonLabel>
+          <ButtonLabel>
             <GrowIcon />
             {displayLabel && <DimensionLabel>{displayLabel}</DimensionLabel>}
-          </IconButtonLabel>
-        </IconButton>
+          </ButtonLabel>
+        </ToggleButton>
       </WithTooltip>
 
       {hasCustomSize && (
-        <IconButton
+        <Button
           key="viewport-rotate"
           title="Rotate viewport (swap width and height)"
+          ariaLabel="Rotate viewport"
+          variant="ghost"
+          size="small"
           onClick={toggleLandscape}
         >
           <RotateIcon />
-        </IconButton>
+        </Button>
       )}
     </>
   );
