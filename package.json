@@ -1,6 +1,6 @@
 {
   "name": "@liip/storybook-addon-resizr",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Storybook addon to resize the story iframe with draggable handles",
   "keywords": [
     "storybook-addon",
