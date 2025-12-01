@@ -14,6 +14,9 @@ const gitignorePath = fileURLToPath(new URL('.gitignore', import.meta.url));
 export default defineConfig([
   includeIgnoreFile(gitignorePath, 'Imported .gitignore patterns'),
   {
+    ignores: ['preset.js', 'manager.js', 'preview.js'],
+  },
+  {
     plugins: { js, 'unused-imports': unusedImports },
     extends: [
       js.configs.recommended,
