@@ -1,5 +1,12 @@
 # @liip/storybook-addon-resizr
 
+## 0.1.2
+
+### Patch Changes
+
+- 04b12aa: Remove `ResizeFrame` export from the `previewEntries` bundle to avoid
+  React version mismatch
+
 ## 0.1.1
 
 ### Patch Changes
