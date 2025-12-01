@@ -1,5 +1,12 @@
 # @liip/storybook-addon-resizr
 
+## 0.1.3
+
+### Patch Changes
+
+- 51b73c1: Fix how the manager bundle the react runtime to avoid React version
+  mismatch
+
 ## 0.1.2
 
 ### Patch Changes
