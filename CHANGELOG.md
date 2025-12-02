@@ -1,5 +1,12 @@
 # @liip/storybook-addon-resizr
 
+## 0.1.4
+
+### Patch Changes
+
+- 94f145b: Remove preset file to avoid double instantiation of the plugin
+- df8dfdd: Fix persisting dimensions in the URL
+
 ## 0.1.3
 
 ### Patch Changes
