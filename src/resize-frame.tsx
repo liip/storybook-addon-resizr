@@ -1,8 +1,13 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { useGlobals, useParameter } from 'storybook/manager-api';
+import { addons, useGlobals, useParameter } from 'storybook/manager-api';
 import { styled } from 'storybook/theming';
 
-import { PARAM_KEY, DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT } from './constants';
+import {
+  PARAM_KEY,
+  DEFAULT_MIN_WIDTH,
+  DEFAULT_MIN_HEIGHT,
+  EVENTS,
+} from './constants';
 
 import type { ResizrParameters, Direction } from './types';
 
@@ -173,15 +178,50 @@ interface ResizeFrameProps {
 }
 
 export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
-  const [globals, updateGlobals] = useGlobals();
+  const [globals] = useGlobals();
   const params = useParameter<ResizrParameters>(PARAM_KEY);
   const [isHovering, setIsHovering] = useState(false);
   const [isDraggingState, setIsDraggingState] = useState(false);
   const [iframeRect, setIframeRect] = useState<DOMRect | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const width = (globals.resizrWidth as number | null) ?? null;
-  const height = (globals.resizrHeight as number | null) ?? null;
+  const persistedWidth = (globals.resizrWidth as number | null) ?? null;
+  const persistedHeight = (globals.resizrHeight as number | null) ?? null;
+
+  // Local state for pending size (communicated via channel, not URL)
+  const [pendingSizeState, setPendingSizeState] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // Use pending values if available, otherwise fall back to persisted values
+  const width = pendingSizeState?.width ?? persistedWidth;
+  const height = pendingSizeState?.height ?? persistedHeight;
+
+  // Listen for pending size changes from toolbar (e.g., rotate button)
+  useEffect(() => {
+    const channel = addons.getChannel();
+    const handlePendingSizeChanged = (
+      data: {
+        width: number;
+        height: number;
+      } | null,
+    ) => {
+      setPendingSizeState(data);
+      // Also apply to iframe immediately
+      const iframe = document.querySelector(
+        'iframe[data-is-storybook="true"]',
+      ) as HTMLIFrameElement;
+      if (iframe && data) {
+        iframe.style.width = `${data.width}px`;
+        iframe.style.height = `${data.height}px`;
+      }
+    };
+    channel.on(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
+    return () => {
+      channel.off(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
+    };
+  }, []);
 
   const minWidth = params?.minWidth ?? DEFAULT_MIN_WIDTH;
   const minHeight = params?.minHeight ?? DEFAULT_MIN_HEIGHT;
@@ -444,14 +484,15 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
     isDragging = false;
     setIsDraggingState(false);
 
-    // Commit the final size to globals only on drag end
+    // Emit pending size via channel (does not trigger iframe reload)
+    // User can click "Persist" button to commit to URL
     if (pendingWidth > 0 && pendingHeight > 0) {
-      updateGlobals({
-        resizrWidth: pendingWidth,
-        resizrHeight: pendingHeight,
-      });
+      const channel = addons.getChannel();
+      const newPendingSize = { width: pendingWidth, height: pendingHeight };
+      setPendingSizeState(newPendingSize);
+      channel.emit(EVENTS.PENDING_SIZE_CHANGED, newPendingSize);
     }
-  }, [updateGlobals]);
+  }, []);
 
   if (params?.disable) {
     return <>{children}</>;

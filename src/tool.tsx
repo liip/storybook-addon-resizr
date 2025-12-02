@@ -1,15 +1,16 @@
 import { GrowIcon } from '@storybook/icons';
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Separator,
   ToggleButton,
   WithTooltip,
   TooltipLinkList,
 } from 'storybook/internal/components';
-import { useGlobals, useParameter } from 'storybook/manager-api';
+import { addons, useGlobals, useParameter } from 'storybook/manager-api';
 import { styled, Global } from 'storybook/theming';
 
-import { PARAM_KEY, MINIMAL_VIEWPORTS } from './constants';
+import { PARAM_KEY, MINIMAL_VIEWPORTS, EVENTS } from './constants';
 
 import type { ResizrParameters, ViewportMap } from './types';
 
@@ -46,12 +47,81 @@ const RotateIcon = () => (
   </svg>
 );
 
+const PersistIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+    <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+  </svg>
+);
+
+const ResetIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m15 15 6 6" />
+    <path d="m15 9 6-6" />
+    <path d="M21 16v5h-5" />
+    <path d="M21 8V3h-5" />
+    <path d="M3 16v5h5" />
+    <path d="m3 21 6-6" />
+    <path d="M3 8V3h5" />
+    <path d="M9 9 3 3" />
+  </svg>
+);
+
 export const Tool = memo(function ResizerTool() {
   const [globals, updateGlobals] = useGlobals();
   const resizrParams = useParameter<ResizrParameters>(PARAM_KEY);
 
-  const width = (globals.resizrWidth as number | null) ?? null;
-  const height = (globals.resizrHeight as number | null) ?? null;
+  const persistedWidth = (globals.resizrWidth as number | null) ?? null;
+  const persistedHeight = (globals.resizrHeight as number | null) ?? null;
+
+  // Local state for pending size (communicated via channel, not URL)
+  const [pendingSize, setPendingSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // Listen for pending size changes from resize-frame (drag events)
+  useEffect(() => {
+    const channel = addons.getChannel();
+    const handlePendingSizeChanged = (
+      data: {
+        width: number;
+        height: number;
+      } | null,
+    ) => {
+      setPendingSize(data);
+    };
+    channel.on(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
+    return () => {
+      channel.off(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
+    };
+  }, []);
+
+  // Use pending values if available, otherwise fall back to persisted values
+  const width = pendingSize?.width ?? persistedWidth;
+  const height = pendingSize?.height ?? persistedHeight;
+  const hasPendingSize = pendingSize !== null;
 
   const viewports: ViewportMap = useMemo(
     () => resizrParams?.presets ?? MINIMAL_VIEWPORTS,
@@ -77,15 +147,33 @@ export const Tool = memo(function ResizerTool() {
 
   const toggleLandscape = useCallback(() => {
     if (width !== null && height !== null) {
-      updateGlobals({
-        resizrWidth: height,
-        resizrHeight: width,
-      });
+      // Update pending values via channel to avoid iframe reload
+      const channel = addons.getChannel();
+      const newPendingSize = { width: height, height: width };
+      setPendingSize(newPendingSize);
+      channel.emit(EVENTS.PENDING_SIZE_CHANGED, newPendingSize);
     }
-  }, [updateGlobals, width, height]);
+  }, [width, height]);
+
+  const persistSize = useCallback(() => {
+    if (pendingSize !== null) {
+      updateGlobals({
+        resizrWidth: pendingSize.width,
+        resizrHeight: pendingSize.height,
+      });
+      setPendingSize(null);
+      const channel = addons.getChannel();
+      channel.emit(EVENTS.PENDING_SIZE_CHANGED, null);
+    }
+  }, [updateGlobals, pendingSize]);
 
   const selectViewport = useCallback(
     (viewportId: string) => {
+      // Clear pending size when selecting a viewport
+      setPendingSize(null);
+      const channel = addons.getChannel();
+      channel.emit(EVENTS.PENDING_SIZE_CHANGED, null);
+
       if (viewportId === RESET_ID) {
         updateGlobals({
           resizrWidth: null,
@@ -104,6 +192,18 @@ export const Tool = memo(function ResizerTool() {
     [updateGlobals, viewports],
   );
 
+  const resetViewport = useCallback(() => {
+    // Clear pending size
+    setPendingSize(null);
+    const channel = addons.getChannel();
+    channel.emit(EVENTS.PENDING_SIZE_CHANGED, null);
+
+    updateGlobals({
+      resizrWidth: null,
+      resizrHeight: null,
+    });
+  }, [updateGlobals]);
+
   const links = useMemo(() => {
     const items: {
       id: string;
@@ -112,17 +212,6 @@ export const Tool = memo(function ResizerTool() {
       active: boolean;
       onClick: () => void;
     }[] = [];
-
-    const hasSize = width !== null && height !== null;
-
-    if (hasSize) {
-      items.push({
-        id: RESET_ID,
-        title: 'Reset',
-        active: false,
-        onClick: () => selectViewport(RESET_ID),
-      });
-    }
 
     const grouped = {
       mobile: Object.entries(viewports).filter(([, v]) => v.type === 'mobile'),
@@ -149,7 +238,7 @@ export const Tool = memo(function ResizerTool() {
       }
     }
 
-    if (selectedViewport === CUSTOM_ID && hasSize) {
+    if (selectedViewport === CUSTOM_ID && width !== null && height !== null) {
       items.push({
         id: CUSTOM_ID,
         title: 'Custom',
@@ -202,6 +291,8 @@ export const Tool = memo(function ResizerTool() {
     <>
       {hasCustomSize && <Global styles={iframeStyles} />}
 
+      <Separator />
+
       <WithTooltip
         placement="top"
         closeOnOutsideClick
@@ -241,9 +332,46 @@ export const Tool = memo(function ResizerTool() {
           size="small"
           onClick={toggleLandscape}
         >
-          <RotateIcon />
+          <ButtonLabel>
+            <RotateIcon />
+            Rotate
+          </ButtonLabel>
         </Button>
       )}
+
+      {hasCustomSize && (
+        <Button
+          key="viewport-reset"
+          title="Reset viewport to full size"
+          ariaLabel="Reset viewport"
+          variant="ghost"
+          size="small"
+          onClick={resetViewport}
+        >
+          <ButtonLabel>
+            <ResetIcon />
+            Reset
+          </ButtonLabel>
+        </Button>
+      )}
+
+      {hasPendingSize && (
+        <Button
+          key="viewport-persist"
+          title="Persist current size to URL"
+          ariaLabel="Persist viewport size"
+          variant="ghost"
+          size="small"
+          onClick={persistSize}
+        >
+          <ButtonLabel>
+            <PersistIcon />
+            Persist
+          </ButtonLabel>
+        </Button>
+      )}
+
+      <Separator />
     </>
   );
 });

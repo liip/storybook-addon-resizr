@@ -3,6 +3,11 @@ export const TOOL_ID = `${ADDON_ID}/tool`;
 export const PREVIEW_ID = `${ADDON_ID}/preview`;
 export const PARAM_KEY = 'resizr';
 
+// Channel events for pending size (not persisted to URL)
+export const EVENTS = {
+  PENDING_SIZE_CHANGED: `${ADDON_ID}/pending-size-changed`,
+};
+
 export const DEFAULT_MIN_WIDTH = 200;
 export const DEFAULT_MIN_HEIGHT = 200;
 
