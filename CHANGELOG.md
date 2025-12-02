@@ -1,5 +1,12 @@
 # @liip/storybook-addon-resizr
 
+## 0.1.5
+
+### Patch Changes
+
+- 1ba1321: Avoid persisting size in the url on each drag end event to not reload
+  the iframe content each time
+
 ## 0.1.4
 
 ### Patch Changes
