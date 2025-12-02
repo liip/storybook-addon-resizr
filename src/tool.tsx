@@ -11,15 +11,10 @@ import { styled, Global } from 'storybook/theming';
 
 import { PARAM_KEY, MINIMAL_VIEWPORTS } from './constants';
 
-import type { ResizrGlobals, ResizrParameters, ViewportMap } from './types';
+import type { ResizrParameters, ViewportMap } from './types';
 
 const RESET_ID = 'reset';
 const CUSTOM_ID = 'custom';
-
-const defaultGlobals: ResizrGlobals = {
-  width: null,
-  height: null,
-};
 
 const ButtonLabel = styled.div({
   display: 'inline-flex',
@@ -55,15 +50,8 @@ export const Tool = memo(function ResizerTool() {
   const [globals, updateGlobals] = useGlobals();
   const resizrParams = useParameter<ResizrParameters>(PARAM_KEY);
 
-  const resizrGlobals: ResizrGlobals = useMemo(
-    () => ({
-      ...defaultGlobals,
-      ...(globals[PARAM_KEY] as Partial<ResizrGlobals> | undefined),
-    }),
-    [globals],
-  );
-
-  const { width, height } = resizrGlobals;
+  const width = (globals.resizrWidth as number | null) ?? null;
+  const height = (globals.resizrHeight as number | null) ?? null;
 
   const viewports: ViewportMap = useMemo(
     () => resizrParams?.presets ?? MINIMAL_VIEWPORTS,
@@ -78,6 +66,7 @@ export const Tool = memo(function ResizerTool() {
     for (const [id, viewport] of Object.entries(viewports)) {
       const presetWidth = parseInt(viewport.styles.width, 10);
       const presetHeight = parseInt(viewport.styles.height, 10);
+
       if (width === presetWidth && height === presetHeight) {
         return id;
       }
@@ -89,7 +78,8 @@ export const Tool = memo(function ResizerTool() {
   const toggleLandscape = useCallback(() => {
     if (width !== null && height !== null) {
       updateGlobals({
-        [PARAM_KEY]: { width: height, height: width },
+        resizrWidth: height,
+        resizrHeight: width,
       });
     }
   }, [updateGlobals, width, height]);
@@ -98,16 +88,15 @@ export const Tool = memo(function ResizerTool() {
     (viewportId: string) => {
       if (viewportId === RESET_ID) {
         updateGlobals({
-          [PARAM_KEY]: { width: null, height: null },
+          resizrWidth: null,
+          resizrHeight: null,
         });
       } else if (viewportId !== CUSTOM_ID) {
         const viewport = viewports[viewportId];
         if (viewport) {
           updateGlobals({
-            [PARAM_KEY]: {
-              width: parseInt(viewport.styles.width, 10),
-              height: parseInt(viewport.styles.height, 10),
-            },
+            resizrWidth: parseInt(viewport.styles.width, 10),
+            resizrHeight: parseInt(viewport.styles.height, 10),
           });
         }
       }
@@ -177,13 +166,17 @@ export const Tool = memo(function ResizerTool() {
     if (selectedViewport === RESET_ID) {
       return null;
     }
+
     if (selectedViewport === CUSTOM_ID) {
       return width !== null && height !== null ? `${width}x${height}` : null;
     }
+
     const viewport = viewports[selectedViewport];
+
     if (viewport) {
       return `${parseInt(viewport.styles.width, 10)}x${parseInt(viewport.styles.height, 10)}`;
     }
+
     return null;
   }, [selectedViewport, viewports, width, height]);
 
@@ -194,6 +187,8 @@ export const Tool = memo(function ResizerTool() {
   const hasCustomSize = width !== null && height !== null;
   const isActive = selectedViewport !== RESET_ID;
 
+  // Global styles for URL persistence - actual sizing is handled by resize-frame.tsx
+  // We use !important to ensure these don't conflict with inline styles during drag
   const iframeStyles = hasCustomSize
     ? {
         [`iframe[data-is-storybook="true"]`]: {

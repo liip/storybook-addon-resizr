@@ -4,18 +4,15 @@ import { styled } from 'storybook/theming';
 
 import { PARAM_KEY, DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT } from './constants';
 
-import type { ResizrGlobals, ResizrParameters, Direction } from './types';
-
-const defaultGlobals: ResizrGlobals = {
-  width: null,
-  height: null,
-};
+import type { ResizrParameters, Direction } from './types';
 
 let isDragging = false;
 let dragStartMouseX = 0;
 let dragStartMouseY = 0;
 let dragStartWidth = 0;
 let dragStartHeight = 0;
+let pendingWidth = 0;
+let pendingHeight = 0;
 
 const Wrapper = styled.div({
   width: '100%',
@@ -183,27 +180,43 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
   const [iframeRect, setIframeRect] = useState<DOMRect | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const resizrGlobals: ResizrGlobals = {
-    ...defaultGlobals,
-    ...(globals[PARAM_KEY] as Partial<ResizrGlobals> | undefined),
-  };
-
-  const { width, height } = resizrGlobals;
+  const width = (globals.resizrWidth as number | null) ?? null;
+  const height = (globals.resizrHeight as number | null) ?? null;
 
   const minWidth = params?.minWidth ?? DEFAULT_MIN_WIDTH;
   const minHeight = params?.minHeight ?? DEFAULT_MIN_HEIGHT;
   const maxWidth = params?.maxWidth;
   const maxHeight = params?.maxHeight;
 
+  // Apply size from globals to iframe (for persistence across page loads)
+  useEffect(() => {
+    const iframe = document.querySelector(
+      'iframe[data-is-storybook="true"]',
+    ) as HTMLIFrameElement;
+
+    if (iframe) {
+      if (width !== null && height !== null) {
+        iframe.style.width = `${width}px`;
+        iframe.style.height = `${height}px`;
+      } else {
+        iframe.style.width = '';
+        iframe.style.height = '';
+      }
+    }
+  }, [width, height]);
+
   useEffect(() => {
     const updateIframeRect = () => {
       const iframe = document.querySelector(
         'iframe[data-is-storybook="true"]',
       ) as HTMLIFrameElement;
+
       const wrapper = wrapperRef.current;
+
       if (iframe && wrapper) {
         const iframeR = iframe.getBoundingClientRect();
         const wrapperR = wrapper.getBoundingClientRect();
+
         setIframeRect(
           new DOMRect(
             iframeR.left - wrapperR.left,
@@ -219,9 +232,11 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
 
     const observer = new ResizeObserver(updateIframeRect);
     const iframe = document.querySelector('iframe[data-is-storybook="true"]');
+
     if (iframe) {
       observer.observe(iframe);
     }
+
     if (wrapperRef.current) {
       observer.observe(wrapperRef.current);
     }
@@ -232,6 +247,7 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
   const isNearIframeEdge = useCallback(
     (clientX: number, clientY: number): boolean => {
       const wrapper = wrapperRef.current;
+
       if (!wrapper || !iframeRect) {
         return false;
       }
@@ -281,11 +297,13 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
       const iframe = document.querySelector(
         'iframe[data-is-storybook="true"]',
       ) as HTMLIFrameElement;
+
       if (!iframe) {
         return;
       }
 
       const rect = iframe.getBoundingClientRect();
+
       setIsHovering(
         isNearIframeEdge(rect.left + e.clientX, rect.top + e.clientY),
       );
@@ -296,25 +314,32 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
     const iframe = document.querySelector(
       'iframe[data-is-storybook="true"]',
     ) as HTMLIFrameElement;
+
     let iframeDoc: Document | null = null;
 
     try {
       iframeDoc =
         iframe?.contentDocument || iframe?.contentWindow?.document || null;
+
       if (iframeDoc) {
         iframeDoc.addEventListener('mousemove', handleIframeMouseMove);
       }
     } catch {
-      // Cross-origin iframe
+      console.warn(
+        'Unable to attach mousemove listener to iframe, cross-origin iframes are not supported',
+      );
     }
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
+
       if (iframeDoc) {
         try {
           iframeDoc.removeEventListener('mousemove', handleIframeMouseMove);
         } catch {
-          // Ignore
+          console.warn(
+            'Unable to remove mousemove listener to iframe, cross-origin iframes are not supported',
+          );
         }
       }
     };
@@ -324,10 +349,13 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
     const iframe = document.querySelector(
       'iframe[data-is-storybook="true"]',
     ) as HTMLIFrameElement;
+
     if (iframe) {
       const rect = iframe.getBoundingClientRect();
+
       return { width: rect.width, height: rect.height };
     }
+
     return { width: 800, height: 600 };
   }, []);
 
@@ -354,7 +382,9 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
     const iframe = document.querySelector(
       'iframe[data-is-storybook="true"]',
     ) as HTMLIFrameElement;
+
     const wrapper = wrapperRef.current;
+
     if (!iframe || !wrapper) {
       return false;
     }
@@ -393,27 +423,35 @@ export const ResizeFrame: React.FC<ResizeFrameProps> = ({ children }) => {
         newHeight = clamp(dragStartHeight + deltaY, minHeight, maxHeight);
       }
 
-      updateGlobals({
-        [PARAM_KEY]: {
-          width: Math.round(newWidth),
-          height: Math.round(newHeight),
-        },
-      });
+      // Store pending values for commit on drag end
+      pendingWidth = Math.round(newWidth);
+      pendingHeight = Math.round(newHeight);
+
+      // Apply size directly to iframe via CSS to avoid re-renders during drag
+      const iframe = document.querySelector(
+        'iframe[data-is-storybook="true"]',
+      ) as HTMLIFrameElement;
+
+      if (iframe) {
+        iframe.style.width = `${pendingWidth}px`;
+        iframe.style.height = `${pendingHeight}px`;
+      }
     },
-    [
-      minWidth,
-      maxWidth,
-      minHeight,
-      maxHeight,
-      updateGlobals,
-      isIframeCenteredHorizontally,
-    ],
+    [minWidth, maxWidth, minHeight, maxHeight, isIframeCenteredHorizontally],
   );
 
   const handleDragEnd = useCallback(() => {
     isDragging = false;
     setIsDraggingState(false);
-  }, []);
+
+    // Commit the final size to globals only on drag end
+    if (pendingWidth > 0 && pendingHeight > 0) {
+      updateGlobals({
+        resizrWidth: pendingWidth,
+        resizrHeight: pendingHeight,
+      });
+    }
+  }, [updateGlobals]);
 
   if (params?.disable) {
     return <>{children}</>;
