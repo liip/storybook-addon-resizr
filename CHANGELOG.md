@@ -1,5 +1,12 @@
 # @liip/storybook-addon-resizr
 
+## 0.1.6
+
+### Patch Changes
+
+- 579e444: Move resize handles inside the iframe to avoid scrollbar flicker on
+  Windows/Linux.
+
 ## 0.1.5
 
 ### Patch Changes
