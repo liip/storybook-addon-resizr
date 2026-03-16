@@ -1,4 +1,4 @@
-name: GitHub Actions Security Analysis with zizmor 🌈
+name: Zizmor
 
 # to upgrade repository actions with a new hash, either manually look up the hash in their releases,
 # or run zizmor --fix with the --gh-token parameter to have it fetch those hashes from GitHub.
