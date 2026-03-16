@@ -1,12 +1,6 @@
 import { GrowIcon } from '@storybook/icons';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Button,
-  Separator,
-  ToggleButton,
-  WithTooltip,
-  TooltipLinkList,
-} from 'storybook/internal/components';
+import { Button, Select, Separator } from 'storybook/internal/components';
 import { addons, useGlobals, useParameter } from 'storybook/manager-api';
 import { styled, Global } from 'storybook/theming';
 
@@ -95,13 +89,11 @@ export const Tool = memo(function ResizerTool() {
   const persistedWidth = (globals.resizrWidth as number | null) ?? null;
   const persistedHeight = (globals.resizrHeight as number | null) ?? null;
 
-  // Local state for pending size (communicated via channel, not URL)
   const [pendingSize, setPendingSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
 
-  // Listen for pending size changes from resize-frame (drag events)
   useEffect(() => {
     const channel = addons.getChannel();
     const handlePendingSizeChanged = (
@@ -118,7 +110,6 @@ export const Tool = memo(function ResizerTool() {
     };
   }, []);
 
-  // Use pending values if available, otherwise fall back to persisted values
   const width = pendingSize?.width ?? persistedWidth;
   const height = pendingSize?.height ?? persistedHeight;
   const hasPendingSize = pendingSize !== null;
@@ -147,7 +138,6 @@ export const Tool = memo(function ResizerTool() {
 
   const toggleLandscape = useCallback(() => {
     if (width !== null && height !== null) {
-      // Update pending values via channel to avoid iframe reload
       const channel = addons.getChannel();
       const newPendingSize = { width: height, height: width };
       setPendingSize(newPendingSize);
@@ -169,7 +159,6 @@ export const Tool = memo(function ResizerTool() {
 
   const selectViewport = useCallback(
     (viewportId: string) => {
-      // Clear pending size when selecting a viewport
       setPendingSize(null);
       const channel = addons.getChannel();
       channel.emit(EVENTS.PENDING_SIZE_CHANGED, null);
@@ -193,7 +182,6 @@ export const Tool = memo(function ResizerTool() {
   );
 
   const resetViewport = useCallback(() => {
-    // Clear pending size
     setPendingSize(null);
     const channel = addons.getChannel();
     channel.emit(EVENTS.PENDING_SIZE_CHANGED, null);
@@ -204,13 +192,11 @@ export const Tool = memo(function ResizerTool() {
     });
   }, [updateGlobals]);
 
-  const links = useMemo(() => {
+  const selectOptions = useMemo(() => {
     const items: {
-      id: string;
       title: string;
-      right?: string;
-      active: boolean;
-      onClick: () => void;
+      description?: string;
+      value: string;
     }[] = [];
 
     const grouped = {
@@ -229,27 +215,23 @@ export const Tool = memo(function ResizerTool() {
         const w = parseInt(viewport.styles.width, 10);
         const h = parseInt(viewport.styles.height, 10);
         items.push({
-          id,
-          title: viewport.name,
-          right: `${w}x${h}`,
-          active: selectedViewport === id,
-          onClick: () => selectViewport(id),
+          value: id,
+          title: `${w}x${h}`,
+          description: viewport.name,
         });
       }
     }
 
     if (selectedViewport === CUSTOM_ID && width !== null && height !== null) {
       items.push({
-        id: CUSTOM_ID,
-        title: 'Custom',
-        right: `${width}x${height}`,
-        active: true,
-        onClick: () => selectViewport(CUSTOM_ID),
+        value: CUSTOM_ID,
+        title: `${width}x${height}`,
+        description: 'Custom',
       });
     }
 
     return items;
-  }, [viewports, selectedViewport, width, height, selectViewport]);
+  }, [viewports, selectedViewport, width, height]);
 
   const displayLabel = useMemo(() => {
     if (selectedViewport === RESET_ID) {
@@ -274,10 +256,7 @@ export const Tool = memo(function ResizerTool() {
   }
 
   const hasCustomSize = width !== null && height !== null;
-  const isActive = selectedViewport !== RESET_ID;
 
-  // Global styles for URL persistence - actual sizing is handled by resize-frame.tsx
-  // We use !important to ensure these don't conflict with inline styles during drag
   const iframeStyles = hasCustomSize
     ? {
         [`iframe[data-is-storybook="true"]`]: {
@@ -293,41 +272,24 @@ export const Tool = memo(function ResizerTool() {
 
       <Separator />
 
-      <WithTooltip
-        placement="top"
-        closeOnOutsideClick
-        tooltip={({ onHide }) => (
-          <TooltipLinkList
-            links={links.map((link) => ({
-              ...link,
-              onClick: () => {
-                link.onClick();
-                onHide();
-              },
-            }))}
-          />
-        )}
+      <Select
+        ariaLabel="Viewport size"
+        size="small"
+        icon={<GrowIcon />}
+        options={selectOptions}
+        defaultOptions={selectedViewport !== RESET_ID ? selectedViewport : []}
+        onSelect={(value) => selectViewport(value as string)}
+        onReset={resetViewport}
+        resetLabel="Reset viewport"
       >
-        <ToggleButton
-          key="viewport-selector"
-          title="Change viewport size"
-          ariaLabel="Change viewport size"
-          variant="ghost"
-          size="small"
-          pressed={isActive}
-        >
-          <ButtonLabel>
-            <GrowIcon />
-            {displayLabel && <DimensionLabel>{displayLabel}</DimensionLabel>}
-          </ButtonLabel>
-        </ToggleButton>
-      </WithTooltip>
+        {displayLabel && <DimensionLabel>{displayLabel}</DimensionLabel>}
+      </Select>
 
       {hasCustomSize && (
         <Button
           key="viewport-rotate"
           title="Rotate viewport (swap width and height)"
-          ariaLabel="Rotate viewport"
+          ariaLabel={false}
           variant="ghost"
           size="small"
           onClick={toggleLandscape}
@@ -343,7 +305,7 @@ export const Tool = memo(function ResizerTool() {
         <Button
           key="viewport-reset"
           title="Reset viewport to full size"
-          ariaLabel="Reset viewport"
+          ariaLabel={false}
           variant="ghost"
           size="small"
           onClick={resetViewport}
@@ -359,7 +321,7 @@ export const Tool = memo(function ResizerTool() {
         <Button
           key="viewport-persist"
           title="Persist current size to URL"
-          ariaLabel="Persist viewport size"
+          ariaLabel={false}
           variant="ghost"
           size="small"
           onClick={persistSize}
