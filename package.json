@@ -83,7 +83,7 @@
     "vite": "^6.0.0"
   },
   "peerDependencies": {
-    "storybook": "^10.2.19"
+    "storybook": "^10.1.0"
   },
   "bundler": {
     "managerEntries": [
