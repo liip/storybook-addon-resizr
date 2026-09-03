@@ -111,7 +111,7 @@ parameters: {
 ```
 
 - `min` is a lower bound in px, with `min-width` semantics: the breakpoint with
-  the largest `min` that is still `<= ` the measured iframe width wins.
+  the largest `min` that is still `<=` the measured iframe width wins.
 - The breakpoint is always derived from the width the iframe actually has,
   including when a preset is selected.
 - No breakpoint matches (no entry below the current width) means no suffix. The

@@ -138,8 +138,8 @@ export const Tool = memo(function ResizerTool() {
       const measure = () => {
         const rect = iframe.getBoundingClientRect();
         setIframeSize({
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
+          width: Math.floor(rect.width),
+          height: Math.floor(rect.height),
         });
       };
 
@@ -279,16 +279,19 @@ export const Tool = memo(function ResizerTool() {
     return items;
   }, [viewports, selectedViewport, width, height]);
 
+  const sortedBreakpoints = useMemo(
+    () => [...(resizrParams?.breakpoints ?? [])].sort((a, b) => b.min - a.min),
+    [resizrParams?.breakpoints],
+  );
+
   // Widest breakpoint whose lower bound still fits the measured width.
   const activeBreakpoint = useMemo(() => {
     if (iframeSize === null) {
       return undefined;
     }
 
-    return [...(resizrParams?.breakpoints ?? [])]
-      .sort((a, b) => b.min - a.min)
-      .find(({ min }) => min <= iframeSize.width);
-  }, [resizrParams?.breakpoints, iframeSize]);
+    return sortedBreakpoints.find(({ min }) => min <= iframeSize.width);
+  }, [sortedBreakpoints, iframeSize]);
 
   const displayLabel = useMemo(() => {
     if (iframeSize === null) {
