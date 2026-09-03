@@ -1,5 +1,26 @@
 # @liip/storybook-addon-resizr
 
+## 0.2.0
+
+### Minor Changes
+
+- 7a93e30: Add a `breakpoints` parameter so consumers can declare their own
+  breakpoints and see the active one in the toolbar, e.g. `1280x800 - lg`.
+  Entries are plain `{ name, min }` data with `min-width` semantics, resolved
+  against the width the iframe actually has. Without a match there is no suffix
+  — name the base range with a `min: 0` entry — and omitting the parameter
+  leaves the label unchanged.
+- 7d4c86e: Add improved responsive viewport handling in the Storybook Resizr
+  addon.
+
+### Patch Changes
+
+- 7a93e30: Show the iframe dimensions in the toolbar as soon as Storybook loads.
+  The label used to stay empty until a preset was picked or the iframe was
+  dragged, because it only read the persisted size. The toolbar now measures the
+  preview iframe itself and displays that size in a dimmed style until an
+  explicit size is set.
+
 ## 0.1.8
 
 ### Patch Changes
