@@ -14,6 +14,13 @@ export interface ResizrGlobals {
   height: number | null;
 }
 
+export interface ResizrBreakpoint {
+  /** Label shown next to the dimensions, e.g. 'md'. */
+  name: string;
+  /** Lower bound of the range, in px (min-width semantics). */
+  min: number;
+}
+
 export interface ResizrParameters {
   disable?: boolean;
   defaultWidth?: number;
@@ -24,6 +31,7 @@ export interface ResizrParameters {
   maxHeight?: number;
   showDimensions?: boolean;
   presets?: ViewportMap;
+  breakpoints?: ResizrBreakpoint[];
 }
 
 export type Direction = 'horizontal' | 'vertical' | 'both';

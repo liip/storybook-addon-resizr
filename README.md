@@ -9,6 +9,7 @@ A Storybook addon that replaces the official Viewport addon with a resizable ifr
 - **Rotate button** - Swap width/height to toggle portrait/landscape orientation
 - **Custom dimensions** - Auto-detected when you manually resize
 - **Configurable presets** - Define your own viewport presets
+- **Breakpoint indicator** - Show your own breakpoint names next to the dimensions
 
 ## Installation
 
@@ -70,6 +71,11 @@ export const MyStory = {
       minHeight: 200,         // Minimum height constraint (default: 200)
       maxWidth: 1920,         // Maximum width constraint
       maxHeight: 1080,        // Maximum height constraint
+      breakpoints: [          // Show the active breakpoint in the toolbar
+        { name: 'xxs', min: 0 },
+        { name: 'md', min: 768 },
+        { name: 'lg', min: 1024 },
+      ],
       presets: {              // Custom viewport presets
         mobile: {
           name: 'Mobile',
@@ -86,6 +92,36 @@ export const MyStory = {
   },
 };
 ```
+
+### Breakpoints
+
+Declare your breakpoints to see the active one next to the dimensions in the
+toolbar, e.g. `1280x800 - lg`:
+
+```ts
+parameters: {
+  resizr: {
+    breakpoints: [
+      { name: 'xxs', min: 0 },
+      { name: 'md', min: 768 },
+      { name: 'lg', min: 1024 },
+    ],
+  },
+},
+```
+
+- `min` is a lower bound in px, with `min-width` semantics: the breakpoint with
+  the largest `min` that is still `<=` the measured iframe width wins.
+- The breakpoint is always derived from the width the iframe actually has,
+  including when a preset is selected.
+- No breakpoint matches (no entry below the current width) means no suffix. The
+  addon never invents a name for the base range — add an entry with `min: 0` to
+  name it yourself.
+- Omit the parameter and the label stays unchanged.
+
+Entries are plain data because `parameters` reach the toolbar serialized as
+JSON, so functions cannot be passed. Reading your design tokens to build this
+array is the consumer's job.
 
 ### Global Configuration
 
@@ -118,6 +154,7 @@ import {
 } from '@liip/storybook-addon-resizr';
 
 import type {
+  ResizrBreakpoint,
   ResizrGlobals,
   ResizrParameters,
   Viewport,

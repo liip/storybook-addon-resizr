@@ -21,3 +21,18 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Secondary: Story = {};
+
+export const WithBreakpoints: Story = {
+  parameters: {
+    resizr: {
+      breakpoints: [
+        { name: 'xxs', min: 0 },
+        { name: 'xs', min: 480 },
+        { name: 'sm', min: 640 },
+        { name: 'md', min: 768 },
+        { name: 'lg', min: 1024 },
+        { name: 'xl', min: 1280 },
+      ],
+    },
+  },
+};
