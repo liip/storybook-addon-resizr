@@ -17,11 +17,11 @@ const ButtonLabel = styled.div({
   gap: '6px',
 });
 
-const DimensionLabel = styled.span({
+const DimensionLabel = styled.span<{ $auto?: boolean }>(({ $auto }) => ({
   fontSize: '11px',
   fontVariantNumeric: 'tabular-nums',
-  opacity: 0.9,
-});
+  opacity: $auto ? 0.6 : 0.9,
+}));
 
 const RotateIcon = () => (
   <svg
@@ -107,6 +107,52 @@ export const Tool = memo(function ResizerTool() {
     channel.on(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
     return () => {
       channel.off(EVENTS.PENDING_SIZE_CHANGED, handlePendingSizeChanged);
+    };
+  }, []);
+
+  // Actual iframe size, so dimensions are shown before any resize happens
+  const [iframeSize, setIframeSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let observer: ResizeObserver | null = null;
+    let frame = 0;
+    let attempts = 0;
+
+    const attach = () => {
+      const iframe = document.querySelector(
+        'iframe[data-is-storybook="true"]',
+      ) as HTMLIFrameElement | null;
+
+      if (!iframe) {
+        // The preview iframe may not be mounted yet when the tool renders
+        if (attempts++ < 120) {
+          frame = requestAnimationFrame(attach);
+        }
+
+        return;
+      }
+
+      const measure = () => {
+        const rect = iframe.getBoundingClientRect();
+        setIframeSize({
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        });
+      };
+
+      measure();
+      observer = new ResizeObserver(measure);
+      observer.observe(iframe);
+    };
+
+    attach();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
     };
   }, []);
 
@@ -233,23 +279,28 @@ export const Tool = memo(function ResizerTool() {
     return items;
   }, [viewports, selectedViewport, width, height]);
 
+  // Widest breakpoint whose lower bound still fits the measured width.
+  const activeBreakpoint = useMemo(() => {
+    if (iframeSize === null) {
+      return undefined;
+    }
+
+    return [...(resizrParams?.breakpoints ?? [])]
+      .sort((a, b) => b.min - a.min)
+      .find(({ min }) => min <= iframeSize.width);
+  }, [resizrParams?.breakpoints, iframeSize]);
+
   const displayLabel = useMemo(() => {
-    if (selectedViewport === RESET_ID) {
+    if (iframeSize === null) {
       return null;
     }
 
-    if (selectedViewport === CUSTOM_ID) {
-      return width !== null && height !== null ? `${width}x${height}` : null;
-    }
+    const dimensions = `${iframeSize.width}x${iframeSize.height}`;
 
-    const viewport = viewports[selectedViewport];
-
-    if (viewport) {
-      return `${parseInt(viewport.styles.width, 10)}x${parseInt(viewport.styles.height, 10)}`;
-    }
-
-    return null;
-  }, [selectedViewport, viewports, width, height]);
+    return activeBreakpoint
+      ? `${dimensions} - ${activeBreakpoint.name}`
+      : dimensions;
+  }, [iframeSize, activeBreakpoint]);
 
   if (resizrParams?.disable) {
     return null;
@@ -281,8 +332,13 @@ export const Tool = memo(function ResizerTool() {
         onSelect={(value) => selectViewport(value as string)}
         onReset={resetViewport}
         resetLabel="Reset viewport"
+        // The trigger renders `selectedOption.title || children`, so the label has
+        // to stay ours for the breakpoint to survive picking a size.
+        showSelectedOptionTitle={false}
       >
-        {displayLabel && <DimensionLabel>{displayLabel}</DimensionLabel>}
+        {displayLabel && (
+          <DimensionLabel $auto={!hasCustomSize}>{displayLabel}</DimensionLabel>
+        )}
       </Select>
 
       {hasCustomSize && (
