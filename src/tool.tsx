@@ -119,7 +119,7 @@ export const Tool = memo(function ResizerTool() {
   useEffect(() => {
     let observer: ResizeObserver | null = null;
     let frame = 0;
-    let attempts = 0;
+    const start = Date.now();
 
     const attach = () => {
       const iframe = document.querySelector(
@@ -128,7 +128,7 @@ export const Tool = memo(function ResizerTool() {
 
       if (!iframe) {
         // The preview iframe may not be mounted yet when the tool renders
-        if (attempts++ < 120) {
+        if (Date.now() - start < 10_000) {
           frame = requestAnimationFrame(attach);
         }
 
